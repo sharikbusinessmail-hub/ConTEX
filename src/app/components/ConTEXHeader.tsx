@@ -9,7 +9,7 @@ import { usePreference } from '../context/PreferenceContext';
 import { MegaMenu } from './MegaMenu';
 import { SitePreferenceModal } from './SitePreferenceModal';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import contexLogo from 'figma:asset/7d1a34fd0bd65681f1012805d92d665c0a3052d9.png';
+import contexLogo from '@/assets/7d1a34fd0bd65681f1012805d92d665c0a3052d9.png';
 
 interface ConTEXHeaderProps {
   onSearchChange: (search: string) => void;
