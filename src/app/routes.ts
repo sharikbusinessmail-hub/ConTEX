@@ -4,7 +4,6 @@ import { CategoryPage } from './pages/CategoryPage';
 import { SeedDatabase } from './pages/SeedDatabase';
 import AdminProducts from './pages/AdminProducts';
 
-
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -22,14 +21,8 @@ export const router = createBrowserRouter([
     path: '/collections/:gender/:category',
     Component: CategoryPage,
   },
-
-   export const router = createBrowserRouter([
-   // ... your other existing routes ...
-  
   {
     path: '/admin/products',
-    element: <AdminProducts />
+    Component: AdminProducts,
   },
-  
-  // ... 
 ]);
