@@ -1,18 +1,16 @@
 import { z } from 'zod';
 
-// Checkout form validation schema
+// Simplified Checkout form validation schema
 export const checkoutSchema = z.object({
   name: z
     .string()
     .min(2, 'Name must be at least 2 characters')
-    .max(100, 'Name must be less than 100 characters')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes'),
+    .max(100, 'Name must be less than 100 characters'),
   
   phone: z
     .string()
     .min(10, 'Phone number must be at least 10 digits')
-    .max(20, 'Phone number must be less than 20 characters')
-    .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, 'Please enter a valid phone number'),
+    .max(20, 'Phone number is too long'),
   
   email: z
     .string()
