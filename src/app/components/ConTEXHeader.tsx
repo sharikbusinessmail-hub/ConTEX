@@ -135,13 +135,6 @@ export const ConTEXHeader: React.FC<ConTEXHeaderProps> = ({
             >
               GIFTS
             </Link>
-
-            <Link
-              to="/collections/last-chance"
-              className="text-sm font-medium hover:text-gray-600 transition-colors uppercase tracking-wide"
-            >
-              LAST CHANCE
-            </Link>
           </nav>
 
           {/* Right Actions */}
@@ -238,15 +231,6 @@ export const ConTEXHeader: React.FC<ConTEXHeaderProps> = ({
                       className="text-left text-sm font-medium hover:text-gray-600 transition-colors"
                     >
                       GIFTS
-                    </button>
-                    <button
-                      onClick={() => {
-                        onCategoryClick('', '');
-                        setMobileMenuOpen(false);
-                      }}
-                      className="text-left text-sm font-medium hover:text-gray-600 transition-colors"
-                    >
-                      LAST CHANCE
                     </button>
                   </nav>
                 </div>
