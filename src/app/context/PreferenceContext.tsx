@@ -38,8 +38,14 @@ export const PreferenceProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   const getCurrencySymbol = () => {
+    // If the currency is LKR, show "LKR" for English and "රු" for Sinhala
+    if (currency === 'LKR') {
+      return language === 'en' ? 'LKR' : 'රු';
+    }
+    
+    // For all other currencies, use their standard symbol (or fallback to the code)
     const curr = currencies.find(c => c.code === currency);
-    return curr?.symbol || 'රු';
+    return curr?.symbol || currency;
   };
 
   // Simple exchange rates (these should ideally come from an API)

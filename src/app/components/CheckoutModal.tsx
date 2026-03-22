@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -37,7 +37,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
   });
 
   const onSubmit = async (data: CheckoutFormData) => {
-    // Create order
     const order: Order = {
       id: `ORD-${Date.now()}`,
       customerName: data.name,
@@ -59,11 +58,49 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
         const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
         localStorage.setItem('orders', JSON.stringify([...existingOrders, order]));
 
+        // --- WHATSAPP INTEGRATION START ---
+        
+        // IMPORTANT: Replace this with your actual store WhatsApp number!
+        // Do not include the '+' sign, just the country code and number.
+        // E.g., for Sri Lanka (94) 771234567 -> '94771234567'
+        const adminWhatsAppNumber = '94770000000'; 
+        
+        // Format the cart items into a nice list
+        const itemsListText = items.map(item => 
+          `▪ ${item.quantity}x ${item.name} (${item.selectedSize}, ${item.selectedColor})`
+        ).join('\n');
+
+        // Create the message text
+        const whatsappMessage = 
+`*🛍️ NEW ORDER RECEIVED!*
+Order ID: #${order.id}
+
+*👤 Customer Details:*
+Name: ${data.name}
+Phone: ${data.phone}
+Email: ${data.email}
+
+*📍 Delivery Address:*
+${data.address}
+
+*📦 Order Items:*
+${itemsListText}
+
+*💰 Total Amount:* $${totalAmount.toFixed(2)}
+
+Please confirm my order!`;
+
+        // Encode the text for a URL and open it
+        const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+        window.open(whatsappUrl, '_blank');
+        
+        // --- WHATSAPP INTEGRATION END ---
+
         // Clear form and cart
         reset();
         clearCart();
 
-        toast.success('Order placed successfully! Order ID: ' + order.id);
+        toast.success('Order placed! Redirecting to WhatsApp...');
         onOpenChange(false);
       }
     } catch (error) {
@@ -102,7 +139,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
               name="phone"
               type="tel"
               {...register('phone')}
-              placeholder="+1 234 567 8900"
+              placeholder="077 123 4567"
               required
             />
             {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
@@ -127,7 +164,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
               id="address"
               name="address"
               {...register('address')}
-              placeholder="123 Main St, Apt 4B, New York, NY 10001"
+              placeholder="123 Main St, Colombo"
               rows={3}
               required
             />
@@ -150,7 +187,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
+            <Button type="submit" disabled={isSubmitting} className="flex-1 bg-black text-white hover:bg-gray-800">
               {isSubmitting ? 'Processing...' : 'Place Order'}
             </Button>
           </div>

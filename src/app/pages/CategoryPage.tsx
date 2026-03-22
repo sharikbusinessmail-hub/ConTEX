@@ -26,6 +26,7 @@ import {
 } from '../components/ui/select';
 import { Button } from '../components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '../components/ui/sheet';
+import { Footer } from '../components/Footer';
 
 // Helper function to normalize category names for comparison
 const normalizeCategory = (category: string): string => {
@@ -449,6 +450,13 @@ export const CategoryPage: React.FC = () => {
         open={checkoutOpen}
         onOpenChange={setCheckoutOpen}
       />
+    {/* ... the product grid ... */}
+          </div>
+        </div>
+      </main>
+
+      {/* Add the Footer right here! */}
+      <Footer />
     </div>
   );
 };

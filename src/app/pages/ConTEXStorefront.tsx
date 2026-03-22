@@ -12,6 +12,7 @@ import { useCart } from '../context/CartContext';
 import { useProducts } from '../hooks/useProducts';
 import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
+import { Footer } from '../components/Footer';
 
 export const ConTEXStorefront: React.FC = () => {
   const { items, totalAmount } = useCart();
@@ -174,6 +175,11 @@ export const ConTEXStorefront: React.FC = () => {
       />
 
       <CheckoutModal open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      
+    {/* ... your other components like BestSellers, ProductCarousel, etc ... */}
+      
+      {/* Add the Footer right here! */}
+      <Footer />
     </div>
   );
 };
