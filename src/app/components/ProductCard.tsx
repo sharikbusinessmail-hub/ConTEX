@@ -7,7 +7,7 @@ interface ProductCardProps {
   product: Product;
 }
 
-// REMOVED "default" TO MATCH YOUR CATEGORY PAGE IMPORTS
+// 1. Named Export (Fixes CategoryPage.tsx)
 export function ProductCard({ product }: ProductCardProps) {
   const displayImage = product.image || 'https://via.placeholder.com/400';
 
@@ -34,6 +34,7 @@ export function ProductCard({ product }: ProductCardProps) {
         
         <p className="text-xs text-gray-500">{product.category}</p>
 
+        {/* Support for relational table string array colors */}
         <div className="flex gap-1.5 mt-2">
           {product.colors && product.colors.map((color) => (
             <div 
@@ -52,3 +53,6 @@ export function ProductCard({ product }: ProductCardProps) {
     </div>
   );
 }
+
+// 2. Default Export (Fixes Storefront and other old imports)
+export default ProductCard;
