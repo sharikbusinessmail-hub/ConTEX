@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../components/ui/label';
 import { AdminHeader } from '../components/AdminHeader';
 import { supabase } from '../utils/supabase/client'; 
-import { cn } from '../lib/utils'; // Useful for conditional classes, assuming you have it. If not, I will use standard string concat.
 
 export default function AdminProducts() {
   const { isAdmin } = useAuth();
@@ -28,7 +27,7 @@ export default function AdminProducts() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  // --- 1. NEW STATE FOR DRAG & DROP TRACKING ---
+  // Drag & Drop State
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   
   // Input state for tags
@@ -67,7 +66,6 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  // --- 2. REFACTORED CORE UPLOAD LOGIC (Reused by both methods) ---
   const uploadFile = async (file: File) => {
     try {
       if (!file.type.startsWith('image/')) {
@@ -99,15 +97,13 @@ export default function AdminProducts() {
     }
   };
 
-  // Handles standard file browser selection
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     await uploadFile(e.target.files[0]);
   };
 
-  // --- 3. NEW DRAG & DROP EVENT HANDLERS ---
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Crucial: Allows a drop to happen
+    e.preventDefault(); 
     e.stopPropagation();
     if (!isUploading) {
       setIsDraggingOver(true);
@@ -121,18 +117,15 @@ export default function AdminProducts() {
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Prevents browser opening the image file
+    e.preventDefault(); 
     e.stopPropagation();
     setIsDraggingOver(false);
 
     if (isUploading || !e.dataTransfer.files || e.dataTransfer.files.length === 0) {
       return;
     }
-
-    // Just take the first file if multiple are dropped
     await uploadFile(e.dataTransfer.files[0]);
   };
-
 
   const addTag = (type: 'colors' | 'sizes', value: string) => {
     if (!value.trim()) return;
@@ -186,7 +179,6 @@ export default function AdminProducts() {
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Helper for rendering gender/categories select class
   const selectClass = "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-black outline-none disabled:opacity-50";
 
   return (
@@ -367,17 +359,13 @@ export default function AdminProducts() {
                   </div>
                 </div>
                 
-                {/* --- UPGRADED IMAGE UPLOAD SECTION WITH DRAG & DROP --- */}
                 <div className="grid gap-2 pt-2 border-t">
                   <Label>Product Image *</Label>
                   
-                  {/* The Drop Zone Container */}
                   <div 
-                    className={cn(
-                      "flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 transition-colors gap-3 min-h-[160px]",
-                      isDraggingOver ? "border-black bg-gray-100" : "border-gray-300 bg-gray-50",
-                      isUploading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-                    )}
+                    className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 transition-colors gap-3 min-h-[160px] ${
+                      isDraggingOver ? "border-black bg-gray-100" : "border-gray-300 bg-gray-50"
+                    } ${isUploading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
@@ -402,7 +390,6 @@ export default function AdminProducts() {
                     )}
                   </div>
 
-                  {/* Hidden Native Input (still used by browse method) */}
                   <input 
                     type="file" 
                     accept="image/*"
