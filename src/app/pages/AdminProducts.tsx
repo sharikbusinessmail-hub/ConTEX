@@ -159,12 +159,16 @@ export default function AdminProducts() {
 
       if (editingId) {
         await updateProduct.mutateAsync({ id: editingId, updates: formData });
+        alert("✅ Product updated successfully!"); // New success message
       } else {
         await createProduct.mutateAsync(formData as Omit<Product, 'id'>);
+        alert("✅ Product created successfully!"); // New success message
       }
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save product:', error);
+      // New error message that shows the exact database rejection reason
+      alert(`❌ Error saving product: ${error.message || 'Check console for details.'}`);
     }
   };
 
