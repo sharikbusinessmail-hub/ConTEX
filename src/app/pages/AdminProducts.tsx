@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Search, Package, Upload, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, Pencil, Trash2, Search, Package, Upload, Loader2, X, Tag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useProducts';
 import { Product } from '../types/product';
@@ -9,25 +9,29 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { AdminHeader } from '../components/AdminHeader';
-// The correct Supabase import you found!
+// --- ENSURE THIS PATH IS CORRECT FOR YOUR PROJECT ---
 import { supabase } from '../utils/supabase/client'; 
 
 export default function AdminProducts() {
-  const { getAccessToken, isAdmin } = useAuth();
-  const token = getAccessToken() || '';
+  const { isAdmin } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Data Hooks
   const { data: products, isLoading } = useProducts();
-  const createProduct = useCreateProduct(token);
-  const updateProduct = useUpdateProduct(token);
-  const deleteProduct = useDeleteProduct(token);
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
 
   // Local State
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false); // New uploading state
+  const [isUploading, setIsUploading] = useState(false);
   
+  // Input state for tags
+  const [colorInput, setColorInput] = useState('');
+  const [sizeInput, setSizeInput] = useState('');
+
   // Form State
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -38,6 +42,7 @@ export default function AdminProducts() {
     image: '',
     colors: [],
     sizes: [],
+    stock: 100 // Default stock number
   });
 
   if (!isAdmin) {
@@ -54,12 +59,12 @@ export default function AdminProducts() {
       setFormData(product);
     } else {
       setEditingId(null);
-      setFormData({ name: '', description: '', price: 0, category: '', gender: 'Unisex', image: '', colors: [], sizes: [] });
+      setFormData({ name: '', description: '', price: 0, category: '', gender: 'Unisex', image: '', colors: [], sizes: [], stock: 100 });
     }
     setIsModalOpen(true);
   };
 
-  // --- THE NEW IMAGE UPLOAD HANDLER ---
+  // --- 1. NEW IMAGE UPLOAD HANDLER ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       if (!e.target.files || e.target.files.length === 0) return;
@@ -92,8 +97,39 @@ export default function AdminProducts() {
     }
   };
 
+  // --- 2. NEW FILTER TAG HANDLERS (Colors & Sizes) ---
+  const addTag = (type: 'colors' | 'sizes', value: string) => {
+    if (!value.trim()) return;
+    const currentTags = formData[type] || [];
+    if (!currentTags.includes(value.trim())) {
+      setFormData({ ...formData, [type]: [...currentTags, value.trim()] });
+    }
+    // Clear inputs
+    if (type === 'colors') setColorInput('');
+    if (type === 'sizes') setSizeInput('');
+  };
+
+  const removeTag = (type: 'colors' | 'sizes', value: string) => {
+    const currentTags = formData[type] || [];
+    setFormData({ ...formData, [type]: currentTags.filter(tag => tag !== value) });
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, type: 'colors' | 'sizes') => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const value = type === 'colors' ? colorInput : sizeInput;
+      addTag(type, value);
+    }
+  };
+
   const handleSave = async () => {
     try {
+      // Validate mandatory fields
+      if (!formData.name || !formData.category || !formData.gender || !formData.image) {
+        alert("Please fill in all mandatory fields (Name, Category, Gender, and Image)");
+        return;
+      }
+
       if (editingId) {
         await updateProduct.mutateAsync({ id: editingId, updates: formData });
       } else {
@@ -121,16 +157,18 @@ export default function AdminProducts() {
       <AdminHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl flex-grow">
+        {/* Header section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-            <p className="text-gray-500 mt-1">Manage your store's inventory and catalog.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Products Catalog</h1>
+            <p className="text-gray-500 mt-1">Manage inventory, colors, sizes, and pricing.</p>
           </div>
           <Button onClick={() => handleOpenModal()} className="bg-black text-white hover:bg-gray-800">
-            <Plus className="w-4 h-4 mr-2" /> Add Product
+            <Plus className="w-4 h-4 mr-2" /> Add New Product
           </Button>
         </div>
 
+        {/* Toolbar */}
         <div className="flex items-center space-x-2 mb-6 bg-white p-4 rounded-lg border shadow-sm">
           <Search className="w-5 h-5 text-gray-400" />
           <Input 
@@ -141,6 +179,7 @@ export default function AdminProducts() {
           />
         </div>
 
+        {/* Data Table */}
         <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -148,18 +187,19 @@ export default function AdminProducts() {
                 <tr>
                   <th className="px-6 py-4">Product</th>
                   <th className="px-6 py-4">Category</th>
+                  <th className="px-6 py-4">Stock</th>
                   <th className="px-6 py-4">Price</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {isLoading ? (
-                  <tr><td colSpan={4} className="text-center py-8 text-gray-500">Loading products...</td></tr>
+                  <tr><td colSpan={5} className="text-center py-8 text-gray-500">Loading products...</td></tr>
                 ) : filteredProducts?.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-12 text-gray-500">
+                    <td colSpan={5} className="text-center py-12 text-gray-500">
                       <Package className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                      No products found.
+                      No products found. Add your first product!
                     </td>
                   </tr>
                 ) : (
@@ -183,6 +223,15 @@ export default function AdminProducts() {
                           {product.category}
                         </Badge>
                       </td>
+                      <td className="px-6 py-4">
+                        {product.stock && product.stock > 10 ? (
+                           <span className="text-green-600 font-medium">{product.stock} in stock</span>
+                        ) : product.stock && product.stock > 0 ? (
+                            <span className="text-orange-600 font-medium">Limited stock ({product.stock})</span>
+                        ) : (
+                            <span className="text-red-600 font-medium">Out of stock</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 font-medium">${product.price.toFixed(2)}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
@@ -202,83 +251,176 @@ export default function AdminProducts() {
           </div>
         </div>
 
+        {/* Complete Upgraded Add/Edit Modal */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingId ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+              <DialogTitle className="text-2xl">{editingId ? 'Edit Product' : 'Add New Product'}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Name</Label>
-                <Input 
-                  value={formData.name || ''} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                  placeholder="Classic T-Shirt" 
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Price ($)</Label>
-                <Input 
-                  type="number" 
-                  value={formData.price || ''} 
-                  onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})} 
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-6 py-4 grid-cols-1 md:grid-cols-2">
+              
+              {/* Mandatory Left Column */}
+              <div className="space-y-4">
                 <div className="grid gap-2">
-                  <Label>Category</Label>
+                  <Label>Name *</Label>
                   <Input 
-                    value={formData.category || ''} 
-                    onChange={(e) => setFormData({...formData, category: e.target.value})} 
-                    placeholder="e.g., T-Shirts" 
+                    value={formData.name || ''} 
+                    onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                    placeholder="e.g., Performance Crew T-Shirt" 
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Gender</Label>
-                  <select 
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={formData.gender || 'Unisex'}
-                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                  >
-                    <option value="Men">Men</option>
-                    <option value="Women">Women</option>
-                    <option value="Unisex">Unisex</option>
-                    <option value="Accessories">Accessories</option>
-                  </select>
-                </div>
-              </div>
-              
-              {/* --- THE NEW FILE UPLOAD UI IN THE MODAL --- */}
-              <div className="grid gap-2 pt-2 border-t">
-                <Label className="font-semibold">Product Image</Label>
-                <div className="flex items-center gap-4 mt-1">
-                  {formData.image ? (
-                    <div className="relative w-16 h-16 rounded border overflow-hidden shrink-0">
-                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded border bg-gray-50 flex items-center justify-center shrink-0">
-                      <Upload className="w-5 h-5 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="flex-1">
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Price ($) *</Label>
                     <Input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={isUploading}
-                      className="cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                      type="number" 
+                      value={formData.price || ''} 
+                      onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})} 
+                      placeholder="39.99"
                     />
-                    {isUploading && <p className="text-xs text-blue-600 mt-2 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading securely to Supabase...</p>}
+                  </div>
+                  {/* --- 3. NEW STOCK/INVENTORY FIELD --- */}
+                  <div className="grid gap-2">
+                    <Label>Inventory (Stock)</Label>
+                    <Input 
+                      type="number" 
+                      value={formData.stock || 0} 
+                      onChange={(e) => setFormData({...formData, stock: parseInt(e.target.value, 10)})} 
+                      placeholder="100"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Category *</Label>
+                    <Input 
+                      value={formData.category || ''} 
+                      onChange={(e) => setFormData({...formData, category: e.target.value})} 
+                      placeholder="e.g., T-Shirts" 
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Gender *</Label>
+                    <select 
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={formData.gender || 'Unisex'}
+                      onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                    >
+                      <option value="Men">Men</option>
+                      <option value="Women">Women</option>
+                      <option value="Unisex">Unisex</option>
+                      <option value="Accessories">Accessories</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {/* --- 4. THE FILE UPLOADER (Fixing previous issue) --- */}
+                <div className="grid gap-2 pt-2 border-t">
+                  <Label>Product Image *</Label>
+                  <div className="flex items-center gap-4 mt-1">
+                    {formData.image ? (
+                      <div className="relative w-24 h-24 rounded border overflow-hidden shrink-0">
+                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded border bg-gray-50 flex items-center justify-center shrink-0">
+                        <Upload className="w-8 h-8 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <Input 
+                        type="file" 
+                        accept="image/*"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                        className="hidden" // Hide the standard ugly input
+                      />
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        className="w-full flex items-center gap-2"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4" />}
+                        {formData.image ? 'Change Image' : 'Choose Image'}
+                      </Button>
+                      {isUploading && <p className="text-xs text-blue-500 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading to Supabase...</p>}
+                    </div>
                   </div>
                 </div>
               </div>
-              
+
+              {/* Advanced/Variants Right Column */}
+              <div className="space-y-4 md:border-l md:pl-6">
+                <div className="grid gap-2">
+                  <Label>Description</Label>
+                  <textarea 
+                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-black"
+                    value={formData.description || ''}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    placeholder="Describe the product material, fit, etc."
+                  />
+                </div>
+
+                {/* --- 5. NEW COLOR TAGGING (Fixing filter issue) --- */}
+                <div className="grid gap-2 pt-2 border-t">
+                  <Label>Available Colors (Filters)</Label>
+                  <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded min-h-[40px] bg-gray-50">
+                    {(formData.colors || []).map(color => (
+                      <Badge key={color} variant="secondary" className="gap-1 bg-white text-gray-700">
+                        {color.startsWith('#') && (
+                          <div style={{backgroundColor: color}} className="w-3 h-3 rounded-full border border-gray-200" />
+                        )}
+                        {color}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag('colors', color)} />
+                      </Badge>
+                    ))}
+                    {(formData.colors || []).length === 0 && <span className="text-xs text-gray-400 p-1">No colors added</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={colorInput}
+                      onChange={(e) => setColorInput(e.target.value)}
+                      placeholder="Add Color or Hex (#000000)"
+                      onKeyDown={(e) => handleTagKeyDown(e, 'colors')}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => addTag('colors', colorInput)}><Tag className="w-4 h-4"/></Button>
+                  </div>
+                </div>
+
+                {/* --- 6. NEW SIZE TAGGING (Fixing filter issue) --- */}
+                <div className="grid gap-2 pt-2 border-t">
+                  <Label>Available Sizes (Filters)</Label>
+                  <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded min-h-[40px] bg-gray-50">
+                    {(formData.sizes || []).map(size => (
+                      <Badge key={size} variant="secondary" className="gap-1 bg-white text-gray-700">
+                        {size}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag('sizes', size)} />
+                      </Badge>
+                    ))}
+                    {(formData.sizes || []).length === 0 && <span className="text-xs text-gray-400 p-1">No sizes added</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={sizeInput}
+                      onChange={(e) => setSizeInput(e.target.value)}
+                      placeholder="Add Size (S, M, L...)"
+                      onKeyDown={(e) => handleTagKeyDown(e, 'sizes')}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => addTag('sizes', sizeInput)}><Tag className="w-4 h-4"/></Button>
+                  </div>
+                </div>
+              </div>
+
             </div>
-            <DialogFooter>
+            <DialogFooter className="mt-6 border-t pt-4">
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
               <Button onClick={handleSave} disabled={isUploading} className="bg-black text-white hover:bg-gray-800">
-                {editingId ? 'Save Changes' : 'Create Product'}
+                {isUploading ? 'Uploading...' : editingId ? 'Save Changes' : 'Create Product'}
               </Button>
             </DialogFooter>
           </DialogContent>
