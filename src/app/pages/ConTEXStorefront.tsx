@@ -1,9 +1,13 @@
 import React from 'react';
+// RESTORING YOUR ORIGINAL IMPORTS
+import Hero from '../components/Hero';
+import Footer from '../components/Footer';
+import ProductCarousel from '../components/ProductCarousel';
+import { ConTEXHeader } from '../components/ConTEXHeader'; 
 import { useProducts } from '../hooks/useProducts';
-import { ProductCard } from '../components/ProductCard';
-import { Loader2, ShoppingBag } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-// 1. Named Export (Fixes routes.ts)
+// Using NAMED EXPORT to satisfy routes.ts
 export function ConTEXStorefront() {
   const { data: allProducts, isLoading, isError } = useProducts();
 
@@ -24,62 +28,45 @@ export function ConTEXStorefront() {
     );
   }
 
+  // Safety net: ensure products is always an array
   const products = allProducts || [];
-  const bestSellers = products.slice(0, 4);
-  const others = products.slice(4);
+
+  // RESTORING YOUR ORIGINAL FILTERING LOGIC
+  const bestSellers = products.filter(p => p.category === 'Best Sellers' || p.stock < 20);
+  const newArrivals = products.slice(0, 10);
+  const accessories = products.filter(p => p.category === 'Accessories');
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <header className="border-b py-4 px-6 flex justify-between items-center bg-white sticky top-0 z-50">
-        <h1 className="text-2xl font-black tracking-tighter">ConTEX</h1>
-        <div className="flex gap-4 items-center">
-          <ShoppingBag className="w-5 h-5" />
-        </div>
-      </header>
-
-      <section className="bg-gray-100 py-20 px-6 text-center">
-        <h2 className="text-5xl font-bold mb-4">PERFORMANCE APPAREL</h2>
-        <p className="text-gray-600 max-w-xl mx-auto mb-8">Elevate your game with gear designed for athletes, worn by everyone.</p>
-        <button className="bg-black text-white px-8 py-3 font-bold uppercase tracking-widest text-sm">Shop Now</button>
-      </section>
+      <ConTEXHeader />
+      <Hero />
       
-      <main className="max-w-7xl mx-auto px-6 py-12 space-y-16">
+      <main className="flex-grow space-y-12 py-12">
+        {/* RESTORING YOUR ORIGINAL CAROUSELS */}
         {bestSellers.length > 0 && (
-          <section>
-            <h3 className="text-xl font-bold mb-8 tracking-widest uppercase">Best Sellers</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {bestSellers.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </section>
+          <ProductCarousel title="BEST SELLERS" products={bestSellers} />
         )}
 
-        {others.length > 0 && (
-          <section>
-            <h3 className="text-xl font-bold mb-8 tracking-widest uppercase">New Arrivals</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {others.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </section>
+        {newArrivals.length > 0 && (
+          <ProductCarousel title="NEW COLLECTION" products={newArrivals} />
+        )}
+
+        {accessories.length > 0 && (
+          <ProductCarousel title="ESSENTIAL ACCESSORIES" products={accessories} />
         )}
 
         {products.length === 0 && (
-          <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed">
+          <div className="text-center py-20 bg-gray-50 mx-4 rounded-xl border-2 border-dashed">
             <h2 className="text-xl font-bold">No Products Found</h2>
-            <p className="text-gray-500 mt-2">The database is connected but empty. Use the Admin Panel to add items!</p>
+            <p className="text-gray-500">Your new database is ready. Add products via Admin to see them here!</p>
           </div>
         )}
       </main>
 
-      <footer className="border-t py-12 px-6 bg-gray-50 mt-auto text-center text-sm text-gray-500">
-        <p>© 2026 ConTEX Store. All rights reserved.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
 
-// 2. Default Export (For safety/fallback)
+// Keep default export as a fallback
 export default ConTEXStorefront;
