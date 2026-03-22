@@ -1,25 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../services/api';
+import { supabase } from '../utils/supabase/client';
 import { Product } from '../types/product';
-import { seedDatabase } from '../utils/seedDatabase';
-
-// Query keys
-export const productKeys = {
-  all: ['products'] as const,
-  list: () => [...productKeys.all, 'list'] as const,
-  detail: (id: string) => [...productKeys.all, 'detail', id] as const,
-};
 
 /**
- * Fetch all products with automatic caching and refetching
+ * Fetch all products from the relational table
  */
-// 1. THIS UPDATES THE HOME PAGE & ADMIN LIST
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('products') // Pointing to the new relational table
+        .from('products')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -29,7 +20,9 @@ export function useProducts() {
   });
 }
 
-// 2. THIS UPDATES THE SEED BUTTON & ADD MODAL
+/**
+ * Create a new product (Admin/Seed functionality)
+ */
 export function useCreateProduct() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -47,63 +40,40 @@ export function useCreateProduct() {
   });
 }
 
-// ... (Update and Delete hooks should also point to .from('products'))
-
-
 /**
- * Fetch a single product by ID
+ * Update an existing product
  */
-export function useProduct(id: string) {
-  return useQuery({
-    queryKey: productKeys.detail(id),
-    queryFn: () => api.getProduct(id),
-    enabled: !!id, // Only run query if ID is provided
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Product> }) => {
+      const { data, error } = await supabase
+        .from('products')
+        .update(updates)
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
   });
 }
 
 /**
- * Create a new product (admin only)
+ * Delete a product
  */
-export function useCreateProduct(accessToken: string) {
+export function useDeleteProduct() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (product: Partial<Product>) => api.createProduct(product, accessToken),
-    onSuccess: () => {
-      // Invalidate and refetch products list
-      queryClient.invalidateQueries({ queryKey: productKeys.list() });
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
     },
-  });
-}
-
-/**
- * Update an existing product (admin only)
- */
-export function useUpdateProduct(accessToken: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<Product> }) =>
-      api.updateProduct(id, updates, accessToken),
-    onSuccess: (data, variables) => {
-      // Invalidate both list and detail queries
-      queryClient.invalidateQueries({ queryKey: productKeys.list() });
-      queryClient.invalidateQueries({ queryKey: productKeys.detail(variables.id) });
-    },
-  });
-}
-
-/**
- * Delete a product (admin only)
- */
-export function useDeleteProduct(accessToken: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => api.deleteProduct(id, accessToken),
-    onSuccess: () => {
-      // Invalidate products list
-      queryClient.invalidateQueries({ queryKey: productKeys.list() });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
   });
 }
