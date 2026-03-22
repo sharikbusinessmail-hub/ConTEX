@@ -9,8 +9,8 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { AdminHeader } from '../components/AdminHeader';
-// NOTE: Make sure this path points to your actual Supabase client file!
-import { supabase } from '../utils/supabase/client';
+// The correct Supabase import you found!
+import { supabase } from '../utils/supabase/client'; 
 
 export default function AdminProducts() {
   const { getAccessToken, isAdmin } = useAuth();
@@ -26,7 +26,7 @@ export default function AdminProducts() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // New uploading state
   
   // Form State
   const [formData, setFormData] = useState<Partial<Product>>({
@@ -59,7 +59,7 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  // NEW: Image Upload Handler
+  // --- THE NEW IMAGE UPLOAD HANDLER ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       if (!e.target.files || e.target.files.length === 0) return;
@@ -70,7 +70,7 @@ export default function AdminProducts() {
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage bucket named 'products'
       const { error: uploadError } = await supabase.storage
         .from('products')
         .upload(filePath, file);
@@ -121,7 +121,6 @@ export default function AdminProducts() {
       <AdminHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl flex-grow">
-        {/* Header section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Products</h1>
@@ -132,7 +131,6 @@ export default function AdminProducts() {
           </Button>
         </div>
 
-        {/* Toolbar */}
         <div className="flex items-center space-x-2 mb-6 bg-white p-4 rounded-lg border shadow-sm">
           <Search className="w-5 h-5 text-gray-400" />
           <Input 
@@ -143,7 +141,6 @@ export default function AdminProducts() {
           />
         </div>
 
-        {/* Data Table */}
         <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -205,7 +202,6 @@ export default function AdminProducts() {
           </div>
         </div>
 
-        {/* Add/Edit Modal */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -252,16 +248,16 @@ export default function AdminProducts() {
                 </div>
               </div>
               
-              {/* NEW: File Upload UI */}
-              <div className="grid gap-2">
-                <Label>Product Image</Label>
-                <div className="flex items-center gap-4">
+              {/* --- THE NEW FILE UPLOAD UI IN THE MODAL --- */}
+              <div className="grid gap-2 pt-2 border-t">
+                <Label className="font-semibold">Product Image</Label>
+                <div className="flex items-center gap-4 mt-1">
                   {formData.image ? (
-                    <div className="relative w-16 h-16 rounded border overflow-hidden">
+                    <div className="relative w-16 h-16 rounded border overflow-hidden shrink-0">
                       <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                   ) : (
-                    <div className="w-16 h-16 rounded border bg-gray-50 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded border bg-gray-50 flex items-center justify-center shrink-0">
                       <Upload className="w-5 h-5 text-gray-400" />
                     </div>
                   )}
@@ -271,9 +267,9 @@ export default function AdminProducts() {
                       accept="image/*"
                       onChange={handleImageUpload}
                       disabled={isUploading}
-                      className="cursor-pointer"
+                      className="cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
                     />
-                    {isUploading && <p className="text-xs text-blue-500 mt-1 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading...</p>}
+                    {isUploading && <p className="text-xs text-blue-600 mt-2 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading securely to Supabase...</p>}
                   </div>
                 </div>
               </div>
