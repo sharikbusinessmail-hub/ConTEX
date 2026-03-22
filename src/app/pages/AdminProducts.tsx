@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../components/ui/label';
 import { AdminHeader } from '../components/AdminHeader';
 // NOTE: Make sure this path points to your actual Supabase client file!
-import { supabase } from '../utils/supabase'; 
+import { supabase } from '../utils/supabase/client';
 
 export default function AdminProducts() {
   const { getAccessToken, isAdmin } = useAuth();
