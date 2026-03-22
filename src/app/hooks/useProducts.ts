@@ -15,13 +15,14 @@ export function useProducts() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Product[];
+      // Safety: return an empty array if data is null
+      return (data as Product[]) || [];
     },
   });
 }
 
 /**
- * Create a new product (Admin/Seed functionality)
+ * Create a new product
  */
 export function useCreateProduct() {
   const queryClient = useQueryClient();
@@ -34,6 +35,8 @@ export function useCreateProduct() {
         .select();
       
       if (error) throw error;
+      // Safety check for the '0' reading error
+      if (!data || data.length === 0) throw new Error("No data returned after insert");
       return data[0];
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
@@ -54,6 +57,7 @@ export function useUpdateProduct() {
         .select();
       
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("No data found to update");
       return data[0];
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
