@@ -3,7 +3,8 @@ import { ConTEXStorefront } from './pages/ConTEXStorefront';
 import { CategoryPage } from './pages/CategoryPage';
 import { SeedDatabase } from './pages/SeedDatabase';
 import AdminProducts from './pages/AdminProducts';
-import AdminOrders from './pages/AdminOrders'; // <-- 1. Add this import
+import AdminOrders from './pages/AdminOrders';
+import AdminLogin from './pages/AdminLogin'; // <-- Added import
 
 export const router = createBrowserRouter([
   {
@@ -27,7 +28,11 @@ export const router = createBrowserRouter([
     Component: AdminProducts,
   },
   {
-    path: '/admin/orders',       // <-- 2. Add this route
+    path: '/admin/orders',
     Component: AdminOrders,
+  },
+  {
+    path: '/admin-login', // <-- Added Login Route
+    Component: AdminLogin,
   },
 ]);
