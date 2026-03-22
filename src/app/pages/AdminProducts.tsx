@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, Search, Package, Upload, Loader2, X, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Package, Upload, Loader2, X, Tag, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useProducts';
 import { Product } from '../types/product';
@@ -9,8 +9,8 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { AdminHeader } from '../components/AdminHeader';
-// --- ENSURE THIS PATH IS CORRECT FOR YOUR PROJECT ---
 import { supabase } from '../utils/supabase/client'; 
+import { cn } from '../lib/utils'; // Useful for conditional classes, assuming you have it. If not, I will use standard string concat.
 
 export default function AdminProducts() {
   const { isAdmin } = useAuth();
@@ -28,6 +28,9 @@ export default function AdminProducts() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
+  // --- 1. NEW STATE FOR DRAG & DROP TRACKING ---
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  
   // Input state for tags
   const [colorInput, setColorInput] = useState('');
   const [sizeInput, setSizeInput] = useState('');
@@ -42,7 +45,7 @@ export default function AdminProducts() {
     image: '',
     colors: [],
     sizes: [],
-    stock: 100 // Default stock number
+    stock: 100
   });
 
   if (!isAdmin) {
@@ -64,47 +67,79 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  // --- 1. NEW IMAGE UPLOAD HANDLER ---
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- 2. REFACTORED CORE UPLOAD LOGIC (Reused by both methods) ---
+  const uploadFile = async (file: File) => {
     try {
-      if (!e.target.files || e.target.files.length === 0) return;
-      
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file (png, jpg, webp).');
+        return;
+      }
+
       setIsUploading(true);
-      const file = e.target.files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Upload to Supabase Storage bucket named 'products'
       const { error: uploadError } = await supabase.storage
         .from('products')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL to save in the database
       const { data } = supabase.storage
         .from('products')
         .getPublicUrl(filePath);
 
-      // Update the form data with the new live URL
-      setFormData({ ...formData, image: data.publicUrl });
+      setFormData(prev => ({ ...prev, image: data.publicUrl }));
     } catch (error) {
       console.error('Error uploading image: ', error);
-      alert('Error uploading image. Make sure your Supabase bucket is named "products" and is set to Public.');
+      alert('Error uploading image. Check console for details.');
     } finally {
       setIsUploading(false);
     }
   };
 
-  // --- 2. NEW FILTER TAG HANDLERS (Colors & Sizes) ---
+  // Handles standard file browser selection
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    await uploadFile(e.target.files[0]);
+  };
+
+  // --- 3. NEW DRAG & DROP EVENT HANDLERS ---
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Crucial: Allows a drop to happen
+    e.stopPropagation();
+    if (!isUploading) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Prevents browser opening the image file
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    if (isUploading || !e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    // Just take the first file if multiple are dropped
+    await uploadFile(e.dataTransfer.files[0]);
+  };
+
+
   const addTag = (type: 'colors' | 'sizes', value: string) => {
     if (!value.trim()) return;
     const currentTags = formData[type] || [];
     if (!currentTags.includes(value.trim())) {
       setFormData({ ...formData, [type]: [...currentTags, value.trim()] });
     }
-    // Clear inputs
     if (type === 'colors') setColorInput('');
     if (type === 'sizes') setSizeInput('');
   };
@@ -124,7 +159,6 @@ export default function AdminProducts() {
 
   const handleSave = async () => {
     try {
-      // Validate mandatory fields
       if (!formData.name || !formData.category || !formData.gender || !formData.image) {
         alert("Please fill in all mandatory fields (Name, Category, Gender, and Image)");
         return;
@@ -152,12 +186,14 @@ export default function AdminProducts() {
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Helper for rendering gender/categories select class
+  const selectClass = "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-black outline-none disabled:opacity-50";
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <AdminHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl flex-grow">
-        {/* Header section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Products Catalog</h1>
@@ -168,7 +204,6 @@ export default function AdminProducts() {
           </Button>
         </div>
 
-        {/* Toolbar */}
         <div className="flex items-center space-x-2 mb-6 bg-white p-4 rounded-lg border shadow-sm">
           <Search className="w-5 h-5 text-gray-400" />
           <Input 
@@ -179,7 +214,6 @@ export default function AdminProducts() {
           />
         </div>
 
-        {/* Data Table */}
         <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -210,7 +244,7 @@ export default function AdminProducts() {
                           {product.image ? (
                             <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                           ) : (
-                            <Package className="w-6 h-6 m-auto text-gray-400 mt-3" />
+                            <ImageIcon className="w-6 h-6 m-auto text-gray-400 mt-3" />
                           )}
                         </div>
                         <div>
@@ -251,7 +285,6 @@ export default function AdminProducts() {
           </div>
         </div>
 
-        {/* Complete Upgraded Add/Edit Modal */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -259,7 +292,6 @@ export default function AdminProducts() {
             </DialogHeader>
             <div className="grid gap-6 py-4 grid-cols-1 md:grid-cols-2">
               
-              {/* Mandatory Left Column */}
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label>Name *</Label>
@@ -280,7 +312,6 @@ export default function AdminProducts() {
                       placeholder="39.99"
                     />
                   </div>
-                  {/* --- 3. NEW STOCK/INVENTORY FIELD --- */}
                   <div className="grid gap-2">
                     <Label>Inventory (Stock)</Label>
                     <Input 
@@ -295,16 +326,36 @@ export default function AdminProducts() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Category *</Label>
-                    <Input 
-                      value={formData.category || ''} 
-                      onChange={(e) => setFormData({...formData, category: e.target.value})} 
-                      placeholder="e.g., T-Shirts" 
-                    />
+                    <select 
+                      className={selectClass}
+                      value={formData.category || ''}
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    >
+                      <option value="" disabled>Select Category</option>
+                      <option value="T-Shirts">T-Shirts</option>
+                      <option value="Shirts">Shirts</option>
+                      <option value="Polos">Polos</option>
+                      <option value="Tanks">Tanks</option>
+                      <option value="Compressions">Compressions</option>
+                      <option value="Hoodies & Jackets">Hoodies & Jackets</option>
+                      <option value="Shorts">Shorts</option>
+                      <option value="Jeans">Jeans</option>
+                      <option value="Joggers & Pants">Joggers & Pants</option>
+                      <option value="Underwear">Underwear</option>
+                      <option value="Crop Tops">Crop Tops</option>
+                      <option value="Leggings">Leggings</option>
+                      <option value="Skirts">Skirts</option>
+                      <option value="One-Piece">One-Piece</option>
+                      <option value="Sports Bra">Sports Bra</option>
+                      <option value="Bags">Bags</option>
+                      <option value="Hats">Hats</option>
+                      <option value="Belts">Belts</option>
+                    </select>
                   </div>
                   <div className="grid gap-2">
                     <Label>Gender *</Label>
                     <select 
-                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className={selectClass}
                       value={formData.gender || 'Unisex'}
                       onChange={(e) => setFormData({...formData, gender: e.target.value})}
                     >
@@ -316,57 +367,64 @@ export default function AdminProducts() {
                   </div>
                 </div>
                 
-                {/* --- 4. THE FILE UPLOADER (Fixing previous issue) --- */}
+                {/* --- UPGRADED IMAGE UPLOAD SECTION WITH DRAG & DROP --- */}
                 <div className="grid gap-2 pt-2 border-t">
                   <Label>Product Image *</Label>
-                  <div className="flex items-center gap-4 mt-1">
-                    {formData.image ? (
-                      <div className="relative w-24 h-24 rounded border overflow-hidden shrink-0">
-                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 rounded border bg-gray-50 flex items-center justify-center shrink-0">
-                        <Upload className="w-8 h-8 text-gray-400" />
-                      </div>
+                  
+                  {/* The Drop Zone Container */}
+                  <div 
+                    className={cn(
+                      "flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 transition-colors gap-3 min-h-[160px]",
+                      isDraggingOver ? "border-black bg-gray-100" : "border-gray-300 bg-gray-50",
+                      isUploading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
                     )}
-                    <div className="flex-1 space-y-2">
-                      <Input 
-                        type="file" 
-                        accept="image/*"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                        className="hidden" // Hide the standard ugly input
-                      />
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        className="w-full flex items-center gap-2"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                      >
-                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4" />}
-                        {formData.image ? 'Change Image' : 'Choose Image'}
-                      </Button>
-                      {isUploading && <p className="text-xs text-blue-500 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading to Supabase...</p>}
-                    </div>
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                  >
+                    {isUploading ? (
+                        <div className="flex flex-col items-center gap-2 text-blue-600">
+                           <Loader2 className="w-8 h-8 animate-spin" />
+                           <p className="text-xs font-medium">Uploading securely to Supabase...</p>
+                        </div>
+                    ) : formData.image ? (
+                        <div className="relative group w-full flex flex-col items-center gap-2">
+                            <img src={formData.image} alt="Preview" className="h-28 w-auto object-contain rounded border" />
+                            <p className="text-xs text-gray-500 group-hover:text-black">Click or drag new image to change</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center text-center gap-2 text-gray-500">
+                            <Upload className="w-8 h-8 text-gray-400" />
+                            <p className="text-sm font-medium text-gray-700">Drag & Drop image here</p>
+                            <p className="text-xs">or click to browse from computer</p>
+                        </div>
+                    )}
                   </div>
+
+                  {/* Hidden Native Input (still used by browse method) */}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                    className="hidden" 
+                  />
                 </div>
               </div>
 
-              {/* Advanced/Variants Right Column */}
               <div className="space-y-4 md:border-l md:pl-6">
                 <div className="grid gap-2">
                   <Label>Description</Label>
                   <textarea 
-                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-black"
+                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-black outline-none"
                     value={formData.description || ''}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     placeholder="Describe the product material, fit, etc."
                   />
                 </div>
 
-                {/* --- 5. NEW COLOR TAGGING (Fixing filter issue) --- */}
                 <div className="grid gap-2 pt-2 border-t">
                   <Label>Available Colors (Filters)</Label>
                   <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded min-h-[40px] bg-gray-50">
@@ -392,7 +450,6 @@ export default function AdminProducts() {
                   </div>
                 </div>
 
-                {/* --- 6. NEW SIZE TAGGING (Fixing filter issue) --- */}
                 <div className="grid gap-2 pt-2 border-t">
                   <Label>Available Sizes (Filters)</Label>
                   <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded min-h-[40px] bg-gray-50">
