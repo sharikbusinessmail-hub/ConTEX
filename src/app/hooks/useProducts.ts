@@ -13,28 +13,42 @@ export const productKeys = {
 /**
  * Fetch all products with automatic caching and refetching
  */
+// 1. THIS UPDATES THE HOME PAGE & ADMIN LIST
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      // 1. Point to the NEW relational table
       const { data, error } = await supabase
-        .from('products') 
+        .from('products') // Pointing to the new relational table
         .select('*')
-        // 2. Sort so newest items appear first
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error("Error fetching from products table:", error);
-        throw error;
-      }
-
-      // 3. Since we migrated the data to match your old format,
-      // your frontend components shouldn't need any other changes!
+      if (error) throw error;
       return data as Product[];
     },
   });
 }
+
+// 2. THIS UPDATES THE SEED BUTTON & ADD MODAL
+export function useCreateProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (newProduct: Omit<Product, 'id'>) => {
+      const id = `prod_${Math.random().toString(36).substr(2, 9)}`;
+      const { data, error } = await supabase
+        .from('products')
+        .insert([{ ...newProduct, id }])
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
+  });
+}
+
+// ... (Update and Delete hooks should also point to .from('products'))
+
 
 /**
  * Fetch a single product by ID
