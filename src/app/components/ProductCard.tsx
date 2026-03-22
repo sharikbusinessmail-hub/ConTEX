@@ -7,8 +7,8 @@ interface ProductCardProps {
   product: Product;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
-  // Use a fallback image if none exists
+// REMOVED "default" TO MATCH YOUR CATEGORY PAGE IMPORTS
+export function ProductCard({ product }: ProductCardProps) {
   const displayImage = product.image || 'https://via.placeholder.com/400';
 
   return (
@@ -34,7 +34,6 @@ export default function ProductCard({ product }: ProductCardProps) {
         
         <p className="text-xs text-gray-500">{product.category}</p>
 
-        {/* Updated Color Swatches for Relational Table */}
         <div className="flex gap-1.5 mt-2">
           {product.colors && product.colors.map((color) => (
             <div 
