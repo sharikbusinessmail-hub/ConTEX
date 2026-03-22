@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Package, Upload, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../hooks/useProducts';
 import { Product } from '../types/product';
@@ -9,6 +9,8 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { AdminHeader } from '../components/AdminHeader';
+// NOTE: Make sure this path points to your actual Supabase client file!
+import { supabase } from '../utils/supabase'; 
 
 export default function AdminProducts() {
   const { getAccessToken, isAdmin } = useAuth();
@@ -24,6 +26,7 @@ export default function AdminProducts() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState<Partial<Product>>({
@@ -39,7 +42,7 @@ export default function AdminProducts() {
 
   if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-gray-50">
         <p className="text-xl text-red-500 font-semibold">Access Denied: Admin privileges required.</p>
       </div>
     );
@@ -54,6 +57,39 @@ export default function AdminProducts() {
       setFormData({ name: '', description: '', price: 0, category: '', gender: 'Unisex', image: '', colors: [], sizes: [] });
     }
     setIsModalOpen(true);
+  };
+
+  // NEW: Image Upload Handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) return;
+      
+      setIsUploading(true);
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL to save in the database
+      const { data } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      // Update the form data with the new live URL
+      setFormData({ ...formData, image: data.publicUrl });
+    } catch (error) {
+      console.error('Error uploading image: ', error);
+      alert('Error uploading image. Make sure your Supabase bucket is named "products" and is set to Public.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -81,10 +117,10 @@ export default function AdminProducts() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <AdminHeader />
       
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl flex-grow">
         {/* Header section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
@@ -215,18 +251,37 @@ export default function AdminProducts() {
                   </select>
                 </div>
               </div>
+              
+              {/* NEW: File Upload UI */}
               <div className="grid gap-2">
-                <Label>Image URL</Label>
-                <Input 
-                  value={formData.image || ''} 
-                  onChange={(e) => setFormData({...formData, image: e.target.value})} 
-                  placeholder="https://..." 
-                />
+                <Label>Product Image</Label>
+                <div className="flex items-center gap-4">
+                  {formData.image ? (
+                    <div className="relative w-16 h-16 rounded border overflow-hidden">
+                      <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded border bg-gray-50 flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <Input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={isUploading}
+                      className="cursor-pointer"
+                    />
+                    {isUploading && <p className="text-xs text-blue-500 mt-1 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Uploading...</p>}
+                  </div>
+                </div>
               </div>
+              
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button onClick={handleSave} className="bg-black text-white hover:bg-gray-800">
+              <Button onClick={handleSave} disabled={isUploading} className="bg-black text-white hover:bg-gray-800">
                 {editingId ? 'Save Changes' : 'Create Product'}
               </Button>
             </DialogFooter>
