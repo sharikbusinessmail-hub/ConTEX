@@ -450,12 +450,6 @@ export const CategoryPage: React.FC = () => {
         open={checkoutOpen}
         onOpenChange={setCheckoutOpen}
       />
-    {/* ... the product grid ... */}
-          </div>
-        </div>
-      </main>
-
-      {/* Add the Footer right here! */}
       <Footer />
     </div>
   );
