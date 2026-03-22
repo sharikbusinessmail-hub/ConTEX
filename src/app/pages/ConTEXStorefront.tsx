@@ -1,12 +1,12 @@
 import React from 'react';
 import { useProducts } from '../hooks/useProducts';
-import ProductCard from '../components/ProductCard';
+import { ProductCard } from '../components/ProductCard';
 import { Loader2, ShoppingBag } from 'lucide-react';
 
-export default function ConTEXStorefront() {
+// 1. Named Export (Fixes routes.ts)
+export function ConTEXStorefront() {
   const { data: allProducts, isLoading, isError } = useProducts();
 
-  // 1. Handle Loading State
   if (isLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center">
@@ -15,7 +15,6 @@ export default function ConTEXStorefront() {
     );
   }
 
-  // 2. Handle Error State
   if (isError) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center gap-4">
@@ -25,16 +24,12 @@ export default function ConTEXStorefront() {
     );
   }
 
-  // 3. Safety Net
   const products = allProducts || [];
-
-  // 4. Basic Sections
   const bestSellers = products.slice(0, 4);
   const others = products.slice(4);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Simple Header */}
       <header className="border-b py-4 px-6 flex justify-between items-center bg-white sticky top-0 z-50">
         <h1 className="text-2xl font-black tracking-tighter">ConTEX</h1>
         <div className="flex gap-4 items-center">
@@ -42,7 +37,6 @@ export default function ConTEXStorefront() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="bg-gray-100 py-20 px-6 text-center">
         <h2 className="text-5xl font-bold mb-4">PERFORMANCE APPAREL</h2>
         <p className="text-gray-600 max-w-xl mx-auto mb-8">Elevate your game with gear designed for athletes, worn by everyone.</p>
@@ -50,7 +44,6 @@ export default function ConTEXStorefront() {
       </section>
       
       <main className="max-w-7xl mx-auto px-6 py-12 space-y-16">
-        {/* Best Sellers Grid */}
         {bestSellers.length > 0 && (
           <section>
             <h3 className="text-xl font-bold mb-8 tracking-widest uppercase">Best Sellers</h3>
@@ -62,7 +55,6 @@ export default function ConTEXStorefront() {
           </section>
         )}
 
-        {/* All Products Grid */}
         {others.length > 0 && (
           <section>
             <h3 className="text-xl font-bold mb-8 tracking-widest uppercase">New Arrivals</h3>
@@ -74,7 +66,6 @@ export default function ConTEXStorefront() {
           </section>
         )}
 
-        {/* Empty State */}
         {products.length === 0 && (
           <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed">
             <h2 className="text-xl font-bold">No Products Found</h2>
@@ -89,3 +80,6 @@ export default function ConTEXStorefront() {
     </div>
   );
 }
+
+// 2. Default Export (For safety/fallback)
+export default ConTEXStorefront;
