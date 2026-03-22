@@ -1,9 +1,7 @@
 import React from 'react';
 import { useProducts } from '../hooks/useProducts';
-import ProductCarousel from '../components/ProductCarousel';
-import Hero from '../components/Hero';
-import Footer from '../components/Footer';
-import { Loader2 } from 'lucide-react';
+import ProductCard from '../components/ProductCard';
+import { Loader2, ShoppingBag } from 'lucide-react';
 
 export default function ConTEXStorefront() {
   const { data: allProducts, isLoading, isError } = useProducts();
@@ -27,40 +25,67 @@ export default function ConTEXStorefront() {
     );
   }
 
-  // 3. Safety Net: Ensure products is always an array
+  // 3. Safety Net
   const products = allProducts || [];
 
-  // 4. Filtering Logic for Carousels
-  const bestSellers = products.filter(p => p.category === 'Best Sellers' || p.stock < 20);
-  const newArrivals = products.slice(0, 10);
-  const accessories = products.filter(p => p.category === 'Accessories');
+  // 4. Basic Sections
+  const bestSellers = products.slice(0, 4);
+  const others = products.slice(4);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <Hero />
+      {/* Simple Header */}
+      <header className="border-b py-4 px-6 flex justify-between items-center bg-white sticky top-0 z-50">
+        <h1 className="text-2xl font-black tracking-tighter">ConTEX</h1>
+        <div className="flex gap-4 items-center">
+          <ShoppingBag className="w-5 h-5" />
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="bg-gray-100 py-20 px-6 text-center">
+        <h2 className="text-5xl font-bold mb-4">PERFORMANCE APPAREL</h2>
+        <p className="text-gray-600 max-w-xl mx-auto mb-8">Elevate your game with gear designed for athletes, worn by everyone.</p>
+        <button className="bg-black text-white px-8 py-3 font-bold uppercase tracking-widest text-sm">Shop Now</button>
+      </section>
       
-      <main className="flex-grow space-y-12 py-12">
+      <main className="max-w-7xl mx-auto px-6 py-12 space-y-16">
+        {/* Best Sellers Grid */}
         {bestSellers.length > 0 && (
-          <ProductCarousel title="BEST SELLERS" products={bestSellers} />
+          <section>
+            <h3 className="text-xl font-bold mb-8 tracking-widest uppercase">Best Sellers</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {bestSellers.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </section>
         )}
 
-        {newArrivals.length > 0 && (
-          <ProductCarousel title="NEW COLLECTION" products={newArrivals} />
+        {/* All Products Grid */}
+        {others.length > 0 && (
+          <section>
+            <h3 className="text-xl font-bold mb-8 tracking-widest uppercase">New Arrivals</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {others.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </section>
         )}
 
-        {accessories.length > 0 && (
-          <ProductCarousel title="ESSENTIAL ACCESSORIES" products={accessories} />
-        )}
-
+        {/* Empty State */}
         {products.length === 0 && (
-          <div className="text-center py-20 bg-gray-50 mx-4 rounded-xl border-2 border-dashed">
+          <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed">
             <h2 className="text-xl font-bold">No Products Found</h2>
-            <p className="text-gray-500">Your new relational database is ready. Go to Admin to add products!</p>
+            <p className="text-gray-500 mt-2">The database is connected but empty. Use the Admin Panel to add items!</p>
           </div>
         )}
       </main>
 
-      <Footer />
+      <footer className="border-t py-12 px-6 bg-gray-50 mt-auto text-center text-sm text-gray-500">
+        <p>© 2026 ConTEX Store. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
