@@ -1,72 +1,122 @@
-import React from 'react';
-// RESTORING YOUR ORIGINAL IMPORTS
-import Hero from '../components/Hero';
+import React, { useState, useMemo } from 'react';
+// RESTORING ALL ORIGINAL IMPORTS
+import { ConTEXHeader } from '../components/ConTEXHeader';
+import { HeroSection } from '../components/HeroSection';
+import { BestSellers } from '../components/BestSellers';
+import { NewCollection } from '../components/NewCollection';
+import { ProductDetailsModal } from '../components/ProductDetailsModal';
+import { CartDrawer } from '../components/CartDrawer';
+import { CheckoutModal } from '../components/CheckoutModal';
 import Footer from '../components/Footer';
-import ProductCarousel from '../components/ProductCarousel';
-import { ConTEXHeader } from '../components/ConTEXHeader'; 
+import { Product, FilterState } from '../types/product';
+import { useCart } from '../context/CartContext';
 import { useProducts } from '../hooks/useProducts';
 import { Loader2 } from 'lucide-react';
 
-// Using NAMED EXPORT to satisfy routes.ts
-export function ConTEXStorefront() {
-  const { data: allProducts, isLoading, isError } = useProducts();
+// Use Named Export to keep routes.ts happy
+export const ConTEXStorefront: React.FC = () => {
+  const { items, totalAmount } = useCart();
+  
+  // NEW RELATIONAL HOOK
+  const { data: allProducts = [], isLoading } = useProducts();
+
+  // RESTORING ALL ORIGINAL STATES
+  const [filters, setFilters] = useState<FilterState>({
+    categories: [],
+    genders: [],
+    sizes: [],
+    sort: 'newest',
+    search: '',
+  });
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // RESTORING ORIGINAL FILTERING LOGIC
+  const filteredProducts = useMemo(() => {
+    let result = [...allProducts];
+
+    if (filters.search) {
+      result = result.filter(p => 
+        p.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+        p.description?.toLowerCase().includes(filters.search.toLowerCase())
+      );
+    }
+
+    if (filters.categories.length > 0) {
+      result = result.filter(p => filters.categories.includes(p.category));
+    }
+
+    if (filters.genders.length > 0) {
+      result = result.filter(p => filters.genders.includes(p.gender));
+    }
+
+    if (filters.sort === 'price-low') result.sort((a, b) => a.price - b.price);
+    if (filters.sort === 'price-high') result.sort((a, b) => b.price - a.price);
+    
+    return result;
+  }, [allProducts, filters]);
 
   if (isLoading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
+      <div className="h-screen w-full flex items-center justify-center bg-white">
+        <Loader2 className="w-10 h-10 animate-spin text-black" />
       </div>
     );
   }
-
-  if (isError) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center gap-4">
-        <p className="text-red-500 font-semibold">Failed to connect to the database.</p>
-        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-black text-white rounded">Retry</button>
-      </div>
-    );
-  }
-
-  // Safety net: ensure products is always an array
-  const products = allProducts || [];
-
-  // RESTORING YOUR ORIGINAL FILTERING LOGIC
-  const bestSellers = products.filter(p => p.category === 'Best Sellers' || p.stock < 20);
-  const newArrivals = products.slice(0, 10);
-  const accessories = products.filter(p => p.category === 'Accessories');
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <ConTEXHeader />
-      <Hero />
+    <div className="min-h-screen bg-white flex flex-col font-sans selection:bg-black selection:text-white">
+      {/* RESTORING ORIGINAL COMPONENTS */}
+      <ConTEXHeader 
+        onCartClick={() => setIsCartOpen(true)} 
+        cartCount={items.reduce((acc, item) => acc + item.quantity, 0)}
+        filters={filters}
+        setFilters={setFilters}
+      />
       
-      <main className="flex-grow space-y-12 py-12">
-        {/* RESTORING YOUR ORIGINAL CAROUSELS */}
-        {bestSellers.length > 0 && (
-          <ProductCarousel title="BEST SELLERS" products={bestSellers} />
-        )}
+      <HeroSection />
 
-        {newArrivals.length > 0 && (
-          <ProductCarousel title="NEW COLLECTION" products={newArrivals} />
-        )}
-
-        {accessories.length > 0 && (
-          <ProductCarousel title="ESSENTIAL ACCESSORIES" products={accessories} />
-        )}
-
-        {products.length === 0 && (
-          <div className="text-center py-20 bg-gray-50 mx-4 rounded-xl border-2 border-dashed">
-            <h2 className="text-xl font-bold">No Products Found</h2>
-            <p className="text-gray-500">Your new database is ready. Add products via Admin to see them here!</p>
-          </div>
-        )}
+      <main className="flex-grow">
+        {/* Pass the filtered data to your original sections */}
+        <BestSellers 
+          products={allProducts.filter(p => p.category === 'Best Sellers' || p.stock < 15)} 
+          onProductClick={setSelectedProduct}
+        />
+        
+        <NewCollection 
+          products={allProducts.slice(0, 8)} 
+          onProductClick={setSelectedProduct}
+        />
       </main>
 
       <Footer />
+
+      {/* RESTORING ALL ORIGINAL MODALS */}
+      {selectedProduct && (
+        <ProductDetailsModal 
+          product={selectedProduct} 
+          onClose={() => setSelectedProduct(null)} 
+        />
+      )}
+
+      <CartDrawer 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)}
+        onCheckout={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      <CheckoutModal 
+        isOpen={isCheckoutOpen} 
+        onClose={() => setIsCheckoutOpen(false)} 
+      />
     </div>
   );
-}
+};
 
-// Keep default export as a fallback
+// Also keep default export to prevent any other build crashes
 export default ConTEXStorefront;
