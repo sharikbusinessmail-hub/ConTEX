@@ -15,19 +15,23 @@ export const productKeys = {
  */
 export function useProducts() {
   return useQuery({
-    queryKey: productKeys.list(),
+    queryKey: ['products'],
     queryFn: async () => {
-      let products = await api.getProducts();
+      // 1. Point to the NEW relational table
+      const { data, error } = await supabase
+        .from('products') 
+        .select('*')
+        // 2. Sort so newest items appear first
+        .order('created_at', { ascending: false });
       
-      // If no products exist, seed the database automatically
-      if (products.length === 0) {
-        console.log('No products found, automatically seeding database...');
-        const seededProducts = await seedDatabase();
-        // Return seeded products directly, or fetch again to confirm
-        return seededProducts.length > 0 ? seededProducts : await api.getProducts();
+      if (error) {
+        console.error("Error fetching from products table:", error);
+        throw error;
       }
-      
-      return products;
+
+      // 3. Since we migrated the data to match your old format,
+      // your frontend components shouldn't need any other changes!
+      return data as Product[];
     },
   });
 }
