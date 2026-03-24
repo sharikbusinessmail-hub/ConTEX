@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-// RESTORING ALL ORIGINAL IMPORTS
 import { ConTEXHeader } from '../components/ConTEXHeader';
 import { HeroSection } from '../components/HeroSection';
 import { BestSellers } from '../components/BestSellers';
@@ -7,20 +6,17 @@ import { NewCollection } from '../components/NewCollection';
 import { ProductDetailsModal } from '../components/ProductDetailsModal';
 import { CartDrawer } from '../components/CartDrawer';
 import { CheckoutModal } from '../components/CheckoutModal';
-import Footer from '../components/Footer';
 import { Product, FilterState } from '../types/product';
+import { mockProducts } from '../data/products';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../hooks/useProducts';
-import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router';
+import { Button } from '../components/ui/button';
+import { Footer } from '../components/Footer';
 
-// Use Named Export to keep routes.ts happy
 export const ConTEXStorefront: React.FC = () => {
   const { items, totalAmount } = useCart();
-  
-  // NEW RELATIONAL HOOK
-  const { data: allProducts = [], isLoading } = useProducts();
-
-  // RESTORING ALL ORIGINAL STATES
+  const { data: products = [], isLoading: loading } = useProducts();
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     genders: [],
@@ -28,95 +24,162 @@ export const ConTEXStorefront: React.FC = () => {
     sort: 'newest',
     search: '',
   });
-
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  // RESTORING ORIGINAL FILTERING LOGIC
-  const filteredProducts = useMemo(() => {
-    let result = [...allProducts];
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = [...products];
 
+    // Search filter
     if (filters.search) {
-      result = result.filter(p => 
-        p.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        p.description?.toLowerCase().includes(filters.search.toLowerCase())
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchLower) ||
+          p.description.toLowerCase().includes(searchLower) ||
+          p.category.toLowerCase().includes(searchLower)
       );
     }
 
+    // Category filter
     if (filters.categories.length > 0) {
-      result = result.filter(p => filters.categories.includes(p.category));
+      filtered = filtered.filter((p) => filters.categories.includes(p.category));
     }
 
+    // Gender filter
     if (filters.genders.length > 0) {
-      result = result.filter(p => filters.genders.includes(p.gender));
+      filtered = filtered.filter((p) => filters.genders.includes(p.gender));
     }
 
-    if (filters.sort === 'price-low') result.sort((a, b) => a.price - b.price);
-    if (filters.sort === 'price-high') result.sort((a, b) => b.price - a.price);
-    
-    return result;
-  }, [allProducts, filters]);
+    // Size filter
+    if (filters.sizes.length > 0) {
+      filtered = filtered.filter((p) =>
+        p.sizes.some((size) => filters.sizes.includes(size))
+      );
+    }
 
-  if (isLoading) {
+    // Sort
+    switch (filters.sort) {
+      case 'price-asc':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-desc':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+    }
+
+    return filtered;
+  }, [products, filters]);
+
+  const handleCategoryClick = (category: string, gender?: string) => {
+    const newFilters = { ...filters };
+    
+    if (category) {
+      newFilters.categories = [category];
+    } else {
+      newFilters.categories = [];
+    }
+    
+    if (gender) {
+      newFilters.genders = [gender];
+    } else if (!category) {
+      newFilters.genders = [];
+    }
+    
+    setFilters(newFilters);
+  };
+
+  const handleWhatsAppCheckout = () => {
+    const message = `*New Order*\\n\\n*Items:*\\n${items
+      .map(
+        (item) =>
+          `- ${item.product.name}\\n  Size: ${item.selectedSize}, Color: ${item.selectedColor}, Qty: ${item.quantity}\\n  Price: $${(
+            item.product.price * item.quantity
+          ).toFixed(2)}`
+      )
+      .join('\\n\\n')}\\n\\n*Total: $${totalAmount.toFixed(2)}*`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  if (loading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-white">
-        <Loader2 className="w-10 h-10 animate-spin text-black" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading products...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans selection:bg-black selection:text-white">
-      {/* RESTORING ORIGINAL COMPONENTS */}
-      <ConTEXHeader 
-        onCartClick={() => setIsCartOpen(true)} 
-        cartCount={items.reduce((acc, item) => acc + item.quantity, 0)}
-        filters={filters}
-        setFilters={setFilters}
+    <div className="min-h-screen bg-white">
+      <ConTEXHeader
+        onSearchChange={(search) => setFilters({ ...filters, search })}
+        onCategoryClick={handleCategoryClick}
+        onCartOpen={() => setCartOpen(true)}
       />
-      
-      <HeroSection />
 
-      <main className="flex-grow">
-        {/* Pass the filtered data to your original sections */}
-        <BestSellers 
-          products={allProducts.filter(p => p.category === 'Best Sellers' || p.stock < 15)} 
-          onProductClick={setSelectedProduct}
-        />
-        
-        <NewCollection 
-          products={allProducts.slice(0, 8)} 
-          onProductClick={setSelectedProduct}
-        />
-      </main>
+      {products.length === 0 ? (
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-8">
+              <h2 className="text-2xl font-bold text-yellow-900 mb-4">
+                No Products Found
+              </h2>
+              <p className="text-yellow-800 mb-6">
+                Your database is empty. Click the button below to seed it with 60+ sample products including clothing, accessories, and more!
+              </p>
+              <Link to="/seed">
+                <Button size="lg" className="bg-yellow-600 hover:bg-yellow-700">
+                  Seed Database with Sample Products
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <HeroSection />
 
-      <Footer />
+          <BestSellers
+            products={filteredAndSortedProducts}
+            onProductClick={(product) => setSelectedProduct(product)}
+          />
 
-      {/* RESTORING ALL ORIGINAL MODALS */}
-      {selectedProduct && (
-        <ProductDetailsModal 
-          product={selectedProduct} 
-          onClose={() => setSelectedProduct(null)} 
-        />
+          <NewCollection
+            products={filteredAndSortedProducts}
+            onProductClick={(product) => setSelectedProduct(product)}
+          />
+        </>
       )}
 
-      <CartDrawer 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)}
-        onCheckout={() => {
-          setIsCartOpen(false);
-          setIsCheckoutOpen(true);
-        }}
+      <ProductDetailsModal
+        product={selectedProduct}
+        open={!!selectedProduct}
+        onOpenChange={(open) => !open && setSelectedProduct(null)}
       />
 
-      <CheckoutModal 
-        isOpen={isCheckoutOpen} 
-        onClose={() => setIsCheckoutOpen(false)} 
+      <CartDrawer
+        open={cartOpen}
+        onOpenChange={setCartOpen}
+        onCheckout={() => setCheckoutOpen(true)}
+        onWhatsAppCheckout={handleWhatsAppCheckout}
       />
+
+      <CheckoutModal open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      
+    {/* ... your other components like BestSellers, ProductCarousel, etc ... */}
+      
+      {/* Add the Footer right here! */}
+      <Footer />
     </div>
   );
 };
-
-// Also keep default export to prevent any other build crashes
-export default ConTEXStorefront;
