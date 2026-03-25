@@ -115,23 +115,51 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   Color {selectedColor && `- ${selectedColor}`}
                 </Label>
                 <div className="flex flex-wrap gap-2">
-                  {product.colors.map((color) => (
-                    <button
-                      key={color.name}
-                      onClick={() => setSelectedColor(color.name)}
-                      className={`relative w-10 h-10 rounded-full border-2 transition-all ${
-                        selectedColor === color.name
-                          ? 'border-black scale-110'
-                          : 'border-gray-300 hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color.hex }}
-                      title={color.name}
-                    >
-                      {selectedColor === color.name && (
-                        <Check className="absolute inset-0 m-auto h-5 w-5 text-white drop-shadow-lg" />
-                      )}
-                    </button>
-                  ))}
+                  {product.colors.map((rawColor, index) => {
+                    // Smart parser: Handles old JSON strings & new simple strings
+                    let colorName = '';
+                    let colorHex = '';
+
+                    if (typeof rawColor === 'string') {
+                      if (rawColor.startsWith('{')) {
+                        try {
+                          const parsed = JSON.parse(rawColor);
+                          colorName = parsed.name || rawColor;
+                          colorHex = parsed.hex || rawColor;
+                        } catch (e) {
+                          colorName = rawColor;
+                          colorHex = rawColor;
+                        }
+                      } else {
+                        colorName = rawColor;
+                        // CSS supports hex codes AND color words (like 'black') directly!
+                        colorHex = rawColor; 
+                      }
+                    } else if (typeof rawColor === 'object') {
+                      colorName = (rawColor as any).name || 'Unknown';
+                      colorHex = (rawColor as any).hex || '#ffffff';
+                    }
+
+                    return (
+                      <button
+                        key={`${colorName}-${index}`}
+                        onClick={() => setSelectedColor(colorName)}
+                        className={`relative w-10 h-10 rounded-full border-2 transition-all ${
+                          selectedColor === colorName
+                            ? 'border-black scale-110'
+                            : 'border-gray-300 hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: colorHex }}
+                        title={colorName}
+                      >
+                        {selectedColor === colorName && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                            <Check className="h-5 w-5 text-white drop-shadow-md" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
