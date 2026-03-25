@@ -1,7 +1,4 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,16 +15,6 @@ import { Order } from '../types/product';
 import { toast } from 'sonner';
 import { useCreateOrder } from '../hooks/useOrders';
 
-// 1. THE INLINE SCHEMA (Guarantees relaxed rules are used)
-const formSchema = z.object({
-  name: z.string().min(2, 'Please enter your full name'),
-  phone: z.string().min(9, 'Please enter a valid phone number'),
-  email: z.string().email('Please enter a valid email address'),
-  address: z.string().min(5, 'Please enter your full shipping address'),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
 interface CheckoutModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,29 +24,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
   const { items, totalAmount, clearCart } = useCart();
   const createOrder = useCreateOrder();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    // 2. THE CRITICAL FIX: This tells React Hook Form to actively track the text fields!
-    defaultValues: {
-      name: '',
-      phone: '',
-      email: '',
-      address: '',
-    }
+  // 1. BULLETPROOF REACT STATE (Guaranteed to read what you type)
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const onSubmit = async (data: FormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); // Stop page reload
+    setIsSubmitting(true);
+
     const order: Order = {
       id: `ORD-${Date.now()}`,
-      customerName: data.name,
-      customerPhone: data.phone,
-      customerEmail: data.email,
-      shippingAddress: data.address,
+      customerName: formData.name,
+      customerPhone: formData.phone,
+      customerEmail: formData.email,
+      shippingAddress: formData.address,
       items: items,
       totalAmount: totalAmount,
       status: 'Pending',
@@ -85,12 +68,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
 Order ID: #${order.id}
 
 *👤 Customer Details:*
-Name: ${data.name}
-Phone: ${data.phone}
-Email: ${data.email}
+Name: ${formData.name}
+Phone: ${formData.phone}
+Email: ${formData.email}
 
 *📍 Delivery Address:*
-${data.address}
+${formData.address}
 
 *📦 Order Items:*
 ${itemsListText}
@@ -102,7 +85,8 @@ Please confirm my order!`;
         const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(whatsappMessage)}`;
         window.open(whatsappUrl, '_blank');
         
-        reset();
+        // Reset form and cart
+        setFormData({ name: '', phone: '', email: '', address: '' });
         clearCart();
         toast.success('Order placed! Redirecting to WhatsApp...');
         onOpenChange(false);
@@ -110,7 +94,13 @@ Please confirm my order!`;
     } catch (error) {
       console.error('Error placing order:', error);
       toast.error('Failed to place order. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
@@ -123,49 +113,58 @@ Please confirm my order!`;
           </DialogDescription>
         </DialogHeader>
 
-        {/* 3. noValidate stops the browser from interfering with our rules */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name *</Label>
             <Input
               id="name"
-              {...register('name')}
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
               placeholder="John Doe"
+              required
             />
-            {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number *</Label>
             <Input
               id="phone"
+              name="phone"
               type="tel"
-              {...register('phone')}
+              value={formData.phone}
+              onChange={handleChange}
               placeholder="077 123 4567"
+              required
+              minLength={9}
             />
-            {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email Address *</Label>
             <Input
               id="email"
+              name="email"
               type="email"
-              {...register('email')}
+              value={formData.email}
+              onChange={handleChange}
               placeholder="john@example.com"
+              required
             />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="address">Shipping Address *</Label>
             <Textarea
               id="address"
-              {...register('address')}
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
               placeholder="123 Main St, Colombo"
               rows={3}
+              required
+              minLength={5}
             />
-            {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
           </div>
 
           <div className="pt-4 border-t space-y-2">
