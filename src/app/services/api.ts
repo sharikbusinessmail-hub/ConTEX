@@ -52,14 +52,27 @@ export const api = {
   // PRODUCTS (Pointed to relational table with Safety Check)
   // ==========================================
 
-  // HELPER: This prevents the "reading '0'" crash by ensuring arrays always exist
+  // HELPER: The "Bulletproof" Sanitizer
   sanitizeProduct(product: any): Product {
+    // 1. Handle Images: If your UI wants images[0], but the DB only has a singular 'image'
+    const safeImages = Array.isArray(product.images) && product.images.length > 0 
+      ? product.images 
+      : (product.image ? [product.image] : ['https://via.placeholder.com/400']);
+
+    // 2. Handle Colors/Sizes: Ensure they are ALWAYS arrays with at least one item
+    let safeColors = Array.isArray(product.colors) ? product.colors : [];
+    if (safeColors.length === 0) safeColors = ['Default']; // Prevents colors[0] crash
+
+    let safeSizes = Array.isArray(product.sizes) ? product.sizes : [];
+    if (safeSizes.length === 0) safeSizes = ['Standard']; // Prevents sizes[0] crash
+
     return {
       ...product,
-      colors: Array.isArray(product.colors) ? product.colors : [],
-      sizes: Array.isArray(product.sizes) ? product.sizes : [],
-      // If your old code used an 'images' array instead of a single 'image' string, uncomment the line below:
-      // images: Array.isArray(product.images) ? product.images : [], 
+      image: safeImages[0], // Ensures 'image' exists
+      images: safeImages,   // Ensures 'images[0]' exists
+      colors: safeColors,
+      sizes: safeSizes,
+      price: product.price || 0,
     };
   },
 
