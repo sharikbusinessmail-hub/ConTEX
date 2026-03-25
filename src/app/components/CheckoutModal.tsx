@@ -1,6 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,16 @@ import { useCart } from '../context/CartContext';
 import { Order } from '../types/product';
 import { toast } from 'sonner';
 import { useCreateOrder } from '../hooks/useOrders';
-import { checkoutSchema, CheckoutFormData } from '../schemas/checkout';
+
+// 1. THE INLINE SCHEMA (Guarantees relaxed rules are used)
+const formSchema = z.object({
+  name: z.string().min(2, 'Please enter your full name'),
+  phone: z.string().min(9, 'Please enter a valid phone number'),
+  email: z.string().email('Please enter a valid email address'),
+  address: z.string().min(5, 'Please enter your full shipping address'),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 interface CheckoutModalProps {
   open: boolean;
@@ -32,11 +42,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CheckoutFormData>({
-    resolver: zodResolver(checkoutSchema),
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    // 2. THE CRITICAL FIX: This tells React Hook Form to actively track the text fields!
+    defaultValues: {
+      name: '',
+      phone: '',
+      email: '',
+      address: '',
+    }
   });
 
-  const onSubmit = async (data: CheckoutFormData) => {
+  const onSubmit = async (data: FormData) => {
     const order: Order = {
       id: `ORD-${Date.now()}`,
       customerName: data.name,
@@ -50,27 +67,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
     };
 
     try {
-      // Save to database using React Query mutation
       const savedOrder = await createOrder.mutateAsync(order);
       
       if (savedOrder) {
-        // Also save to localStorage as backup
         const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
         localStorage.setItem('orders', JSON.stringify([...existingOrders, order]));
 
-        // --- WHATSAPP INTEGRATION START ---
-        
-        // IMPORTANT: Replace this with your actual store WhatsApp number!
-        // Do not include the '+' sign, just the country code and number.
-        // E.g., for Sri Lanka (94) 771234567 -> '94771234567'
+        // --- WHATSAPP INTEGRATION ---
         const adminWhatsAppNumber = '94770000000'; 
         
-        // Format the cart items into a nice list
         const itemsListText = items.map(item => 
           `▪ ${item.quantity}x ${item.name} (${item.selectedSize}, ${item.selectedColor})`
         ).join('\n');
 
-        // Create the message text
         const whatsappMessage = 
 `*🛍️ NEW ORDER RECEIVED!*
 Order ID: #${order.id}
@@ -90,16 +99,11 @@ ${itemsListText}
 
 Please confirm my order!`;
 
-        // Encode the text for a URL and open it
         const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(whatsappMessage)}`;
         window.open(whatsappUrl, '_blank');
         
-        // --- WHATSAPP INTEGRATION END ---
-
-        // Clear form and cart
         reset();
         clearCart();
-
         toast.success('Order placed! Redirecting to WhatsApp...');
         onOpenChange(false);
       }
@@ -119,15 +123,14 @@ Please confirm my order!`;
           </DialogDescription>
         </DialogHeader>
 
+        {/* 3. noValidate stops the browser from interfering with our rules */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="name">Full Name *</Label>
             <Input
               id="name"
-              name="name"
               {...register('name')}
               placeholder="John Doe"
-              required
             />
             {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
           </div>
@@ -136,11 +139,9 @@ Please confirm my order!`;
             <Label htmlFor="phone">Phone Number *</Label>
             <Input
               id="phone"
-              name="phone"
               type="tel"
               {...register('phone')}
               placeholder="077 123 4567"
-              required
             />
             {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
           </div>
@@ -149,11 +150,9 @@ Please confirm my order!`;
             <Label htmlFor="email">Email Address *</Label>
             <Input
               id="email"
-              name="email"
               type="email"
               {...register('email')}
               placeholder="john@example.com"
-              required
             />
             {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
           </div>
@@ -162,11 +161,9 @@ Please confirm my order!`;
             <Label htmlFor="address">Shipping Address *</Label>
             <Textarea
               id="address"
-              name="address"
               {...register('address')}
               placeholder="123 Main St, Colombo"
               rows={3}
-              required
             />
             {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
           </div>
