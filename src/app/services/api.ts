@@ -48,11 +48,28 @@ export const api = {
   // ==========================================
   // PRODUCTS (NEW! Pointed to relational table)
   // ==========================================
+// ==========================================
+  // PRODUCTS (Pointed to relational table with Safety Check)
+  // ==========================================
+
+  // HELPER: This prevents the "reading '0'" crash by ensuring arrays always exist
+  sanitizeProduct(product: any): Product {
+    return {
+      ...product,
+      colors: Array.isArray(product.colors) ? product.colors : [],
+      sizes: Array.isArray(product.sizes) ? product.sizes : [],
+      // If your old code used an 'images' array instead of a single 'image' string, uncomment the line below:
+      // images: Array.isArray(product.images) ? product.images : [], 
+    };
+  },
+
   async getProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase.from('products').select('*');
       if (error) throw error;
-      return data || [];
+      
+      // Run the data through our sanitizer before sending to the UI
+      return (data || []).map(this.sanitizeProduct);
     } catch (error) {
       console.error('Error fetching products from new table:', error);
       return [];
@@ -63,7 +80,7 @@ export const api = {
     try {
       const { data, error } = await supabase.from('products').insert(products).select();
       if (error) throw error;
-      return data || [];
+      return (data || []).map(this.sanitizeProduct);
     } catch (error) {
       console.error('Error seeding to new table:', error);
       return [];
@@ -74,13 +91,12 @@ export const api = {
     try {
       const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
       if (error) throw error;
-      return data || null;
+      return data ? this.sanitizeProduct(data) : null;
     } catch (error) {
       console.error('Error fetching single product:', error);
       return null;
     }
   },
-
   async createProduct(product: Partial<Product>, accessToken?: string): Promise<Product | null> {
     try {
       const { data, error } = await supabase.from('products').insert([product]).select().single();
