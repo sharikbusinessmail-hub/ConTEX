@@ -119,7 +119,7 @@ Please confirm my order!`;
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="name">Full Name *</Label>
             <Input
