@@ -1,7 +1,12 @@
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { Product, Order } from '../types/product';
+import { createClient } from '@supabase/supabase-js';
 
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-b379e40b`;
+// 1. Create a direct Supabase client for the new database
+const supabaseUrl = `https://${projectId}.supabase.co`;
+const supabase = createClient(supabaseUrl, publicAnonKey);
+
+const BASE_URL = `${supabaseUrl}/functions/v1/make-server-b379e40b`;
 
 const getHeaders = (accessToken?: string | null) => ({
   'Content-Type': 'application/json',
@@ -9,7 +14,9 @@ const getHeaders = (accessToken?: string | null) => ({
 });
 
 export const api = {
-  // Auth
+  // ==========================================
+  // AUTH (Unchanged - Keeps your logins working)
+  // ==========================================
   async signUp(email: string, password: string, name: string) {
     try {
       const response = await fetch(`${BASE_URL}/auth/signup`, {
@@ -17,8 +24,7 @@ export const api = {
         headers: getHeaders(),
         body: JSON.stringify({ email, password, name }),
       });
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error signing up:', error);
       return { error: 'Failed to sign up' };
@@ -32,61 +38,54 @@ export const api = {
         headers: getHeaders(accessToken),
         body: JSON.stringify({ email, password, name }),
       });
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error creating admin user:', error);
       return { error: 'Failed to create admin user' };
     }
   },
 
-  // Products
+  // ==========================================
+  // PRODUCTS (NEW! Pointed to relational table)
+  // ==========================================
   async getProducts(): Promise<Product[]> {
     try {
-      const response = await fetch(`${BASE_URL}/products`, { headers: getHeaders() });
-      const data = await response.json();
-      return data.products || [];
+      const { data, error } = await supabase.from('products').select('*');
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching products from new table:', error);
       return [];
     }
   },
 
   async seedProducts(products: Partial<Product>[]): Promise<Product[]> {
     try {
-      const response = await fetch(`${BASE_URL}/products/seed`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(products),
-      });
-      const data = await response.json();
-      return data.products || [];
+      const { data, error } = await supabase.from('products').insert(products).select();
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('Error seeding products:', error);
+      console.error('Error seeding to new table:', error);
       return [];
     }
   },
 
   async getProduct(id: string): Promise<Product | null> {
     try {
-      const response = await fetch(`${BASE_URL}/products/${id}`, { headers: getHeaders() });
-      const data = await response.json();
-      return data.product || null;
+      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data || null;
     } catch (error) {
-      console.error('Error fetching product:', error);
+      console.error('Error fetching single product:', error);
       return null;
     }
   },
 
   async createProduct(product: Partial<Product>, accessToken?: string): Promise<Product | null> {
     try {
-      const response = await fetch(`${BASE_URL}/products`, {
-        method: 'POST',
-        headers: getHeaders(accessToken),
-        body: JSON.stringify(product),
-      });
-      const data = await response.json();
-      return data.product || null;
+      const { data, error } = await supabase.from('products').insert([product]).select().single();
+      if (error) throw error;
+      return data || null;
     } catch (error) {
       console.error('Error creating product:', error);
       return null;
@@ -95,13 +94,9 @@ export const api = {
 
   async updateProduct(id: string, updates: Partial<Product>, accessToken: string): Promise<Product | null> {
     try {
-      const response = await fetch(`${BASE_URL}/products/${id}`, {
-        method: 'PUT',
-        headers: getHeaders(accessToken),
-        body: JSON.stringify(updates),
-      });
-      const data = await response.json();
-      return data.product || null;
+      const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      return data || null;
     } catch (error) {
       console.error('Error updating product:', error);
       return null;
@@ -110,19 +105,18 @@ export const api = {
 
   async deleteProduct(id: string, accessToken: string): Promise<boolean> {
     try {
-      const response = await fetch(`${BASE_URL}/products/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders(accessToken),
-      });
-      const data = await response.json();
-      return data.success || false;
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
+      return true;
     } catch (error) {
       console.error('Error deleting product:', error);
       return false;
     }
   },
 
-  // Orders
+  // ==========================================
+  // ORDERS (Unchanged - Keeps checkout working)
+  // ==========================================
   async saveOrder(order: Partial<Order>): Promise<Order | null> {
     try {
       const response = await fetch(`${BASE_URL}/orders`, {
