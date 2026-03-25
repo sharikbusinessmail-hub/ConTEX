@@ -112,23 +112,41 @@ export const api = {
   },
   async createProduct(product: Partial<Product>, accessToken?: string): Promise<Product | null> {
     try {
-      const { data, error } = await supabase.from('products').insert([product]).select().single();
-      if (error) throw error;
-      return data || null;
+      // 1. Clean the payload before sending to the database
+      const dbPayload = { ...product };
+      delete dbPayload.images; // DB doesn't have this column
+      delete dbPayload.id;     // DB generates this automatically
+
+      const { data, error } = await supabase.from('products').insert([dbPayload]).select().single();
+      
+      if (error) {
+        console.error("Supabase Create Error:", error);
+        throw new Error(error.message); // Actually throw the error so the UI shows it!
+      }
+      return data ? this.sanitizeProduct(data) : null;
     } catch (error) {
       console.error('Error creating product:', error);
-      return null;
+      throw error; // Stop swallowing the error
     }
   },
 
   async updateProduct(id: string, updates: Partial<Product>, accessToken: string): Promise<Product | null> {
     try {
-      const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
-      if (error) throw error;
-      return data || null;
+      // 1. Clean the payload before sending to the database
+      const dbPayload = { ...updates };
+      delete dbPayload.images; // DB doesn't have this column
+      delete dbPayload.id;     // We can't update the primary key
+
+      const { data, error } = await supabase.from('products').update(dbPayload).eq('id', id).select().single();
+      
+      if (error) {
+        console.error("Supabase Update Error:", error);
+        throw new Error(error.message); // Actually throw the error so the UI shows it!
+      }
+      return data ? this.sanitizeProduct(data) : null;
     } catch (error) {
       console.error('Error updating product:', error);
-      return null;
+      throw error; // Stop swallowing the error
     }
   },
 
