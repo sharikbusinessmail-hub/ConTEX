@@ -24,7 +24,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
   const { items, totalAmount, clearCart } = useCart();
   const createOrder = useCreateOrder();
 
-  // 1. BULLETPROOF REACT STATE (Guaranteed to read what you type)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -34,7 +33,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Stop page reload
+    e.preventDefault(); 
     setIsSubmitting(true);
 
     const order: Order = {
@@ -50,45 +49,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
     };
 
     try {
+      // 1. Save directly to your Supabase Database
       const savedOrder = await createOrder.mutateAsync(order);
       
       if (savedOrder) {
+        // 2. Save to local storage as a quick browser backup
         const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
         localStorage.setItem('orders', JSON.stringify([...existingOrders, order]));
-
-        // --- WHATSAPP INTEGRATION ---
-        const adminWhatsAppNumber = '94770000000'; 
         
-        const itemsListText = items.map(item => 
-          `▪ ${item.quantity}x ${item.name} (${item.selectedSize}, ${item.selectedColor})`
-        ).join('\n');
-
-        const whatsappMessage = 
-`*🛍️ NEW ORDER RECEIVED!*
-Order ID: #${order.id}
-
-*👤 Customer Details:*
-Name: ${formData.name}
-Phone: ${formData.phone}
-Email: ${formData.email}
-
-*📍 Delivery Address:*
-${formData.address}
-
-*📦 Order Items:*
-${itemsListText}
-
-*💰 Total Amount:* $${totalAmount.toFixed(2)}
-
-Please confirm my order!`;
-
-        const whatsappUrl = `https://wa.me/${adminWhatsAppNumber}?text=${encodeURIComponent(whatsappMessage)}`;
-        window.open(whatsappUrl, '_blank');
-        
-        // Reset form and cart
+        // 3. Reset form, clear the cart, and show a success message!
         setFormData({ name: '', phone: '', email: '', address: '' });
         clearCart();
-        toast.success('Order placed! Redirecting to WhatsApp...');
+        toast.success('Order placed successfully! We will process it shortly.');
         onOpenChange(false);
       }
     } catch (error) {
