@@ -100,7 +100,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
 
 // SILENT ADMIN NOTIFICATION: Ping your webhook in the background!
 try {
-  await fetch('PASTE_YOUR_MAKE_COM_URL_HERE', {
+  await fetch('https://hook.eu1.make.com/4v26nh4tqn72z7a4ylhp43e5ridfm6no', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
