@@ -96,6 +96,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
               placeholder="John Doe"
               required
             />
+            // Inside your handleSubmit function...
+
+// SILENT ADMIN NOTIFICATION: Ping your webhook in the background!
+try {
+  await fetch('PASTE_YOUR_MAKE_COM_URL_HERE', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      orderId: order.id,
+      name: formData.name,
+      phone: formData.phone,
+      total: totalAmount.toFixed(2)
+    })
+  });
+} catch (webhookError) {
+  console.error('Webhook failed:', webhookError);
+}
           </div>
 
           <div className="space-y-2">
