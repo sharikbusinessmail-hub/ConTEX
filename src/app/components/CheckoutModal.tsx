@@ -53,11 +53,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
       const savedOrder = await createOrder.mutateAsync(order);
       
       if (savedOrder) {
-        // 2. Save to local storage as a quick browser backup
+        // 2. SILENT ADMIN NOTIFICATION: Ping your webhook in the background!
+        try {
+          await fetch('https://hook.eu1.make.com/4v26nh4tqn72z7a4ylhp43e5ridfm6no', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: order.id,
+              name: formData.name,
+              phone: formData.phone,
+              total: totalAmount.toFixed(2)
+            })
+          });
+        } catch (webhookError) {
+          console.error('Webhook failed:', webhookError);
+        }
+
+        // 3. Save to local storage as a quick browser backup
         const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
         localStorage.setItem('orders', JSON.stringify([...existingOrders, order]));
         
-        // 3. Reset form, clear the cart, and show a success message!
+        // 4. Reset form, clear the cart, and show a success message!
         setFormData({ name: '', phone: '', email: '', address: '' });
         clearCart();
         toast.success('Order placed successfully! We will process it shortly.');
@@ -96,23 +112,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onOpenChange
               placeholder="John Doe"
               required
             />
-            // Inside your handleSubmit function...
-
-// SILENT ADMIN NOTIFICATION: Ping your webhook in the background!
-try {
-  await fetch('https://hook.eu1.make.com/4v26nh4tqn72z7a4ylhp43e5ridfm6no', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      orderId: order.id,
-      name: formData.name,
-      phone: formData.phone,
-      total: totalAmount.toFixed(2)
-    })
-  });
-} catch (webhookError) {
-  console.error('Webhook failed:', webhookError);
-}
           </div>
 
           <div className="space-y-2">
